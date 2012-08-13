@@ -336,11 +336,13 @@ void computeSleep(int *sleepTime, int *wakeUpCount)
 //---------------------------------------------------------------------------
 double  computeSavings(int sleepTime, int sleepWatts, int activeWatts)
 {
-  double S;                      // Holds percentage of sleepTime
+  double S;              // Holds percentage of sleepTime
   double eq1, eq2;		 //two equations to calculate wattae savings
   
-  //
+  //Calculate total savings
+  //eq1 is prior to policy consumtion
   eq1 = ( N - AoffTime - AsleepTime ) * activeWatts + AsleepTime * sleepWatts;
+  //eq1 is post policy consumtion
   eq2 = ( N - AoffTime - AsleepTime  - sleepTime) * activeWatts +
 	  (AsleepTime + sleepTime) * sleepWatts;
 
