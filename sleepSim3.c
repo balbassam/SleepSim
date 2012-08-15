@@ -75,6 +75,7 @@
 #define   ONEDAY    1440           // Number of minutes in one day
 #define  VERBOSE   FALSE           // Verbose mode flag
 #define MAX_SIZE 1000000           // Maximum size of input data in minutes
+#define NUMPARAMETERS  6           // Numer of parameters used
 
 //----- Globals -------------------------------------------------------------
 char X[MAX_SIZE];                  // Time series read from "in.dat"
@@ -82,8 +83,6 @@ int  N;                            // Number of values in "in.dat"
 FILE *InFile;                      // "in.dat" file
 FILE *WattageFile;                 // holds wattage Savings    
 FILE *UsageFile;                   // holds usage Savings
-int  ActiveWatts;                  // Consumption while on 
-int  SleepWatts;                   // Consumption while sleep 
 int  AoffTime;                     // Total minutes computers already off
 int  AsleepTime;                   // Total mintues computers already sleep
 
@@ -93,29 +92,33 @@ void outputX(void);               // Output X vector
 void computeSleep(int *sleepTime, int *wakeUpCount); // Compute sleep time
 // Computes wattage Savings
 double  computeSavings(int sleepTime, int sleepWatts, int activeWatts); 
+void getParameters(char* line, int **parameters);
 
 //===========================================================================
 //=  Main program                                                           =
 //===========================================================================
 int main(int argc, char *argv[])
 {
-  //
-  int      timeOut1, timeOut2;     // Inactivity timeout values
-  int      timeOutCurrent;         // Current timeout value
-  int      time1, time2;           // Inactivity timeout change times
-  int      dailyTime;              // Time from last midnight
-  int      idleState;              // Flag for idle state
-  int      idleCount;              // Counter for idle state
-  int      wakeUpCount;            // Counter for wake-up events
-  int      sleepTime;              // Total sleep time
-  
-  char     *dataFile;              //Name of in.dat file
+  int      *parameters[NUMPARAMETERS]; //Array of parameters
+  int      timeOut1, timeOut2;         // Inactivity timeout values
+  int      timeOutCurrent;             // Current timeout value
+  int      time1, time2;               // Inactivity timeout change times
+  int      dailyTime;                  // Time from last midnight
+  int      idleState;                  // Flag for idle state
+  int      idleCount;                  // Counter for idle state
+  int      wakeUpCount;                // Counter for wake-up events
+  int      sleepTime;                  // Total sleep time
+  int      activeWatts;                // Consumption while on 
+  int      SleepWatts;                 // Consumption while sleep 
 
-  char     *tokens;                //used for splitting strings
-  char     *tokenHolder;
-  int      i;                      // Loop counter
+  char     dataFile[255];              //Name of in.dat file
+  char     params[128];                //Parameters from first line of file
 
-  // Initialize timeout and time values
+  int      i;                          // Loop counter
+
+  // Initialize default values
+  activeWatts = 100;    // 100 Watts active consumption
+  SleepWatts = 0;       // 0 Watts idle consumption
   timeOut1 = 45;        // 45 minutes midnight to 8am and 5pm to midnight
   timeOut2 = 120;       // 2 hours 8am to 5pm
   time1 = 480;          // 8 am
@@ -128,37 +131,38 @@ int main(int argc, char *argv[])
     return -1;
   }
   else
-    dataFile = argv[1]; // read from in.dat file
+    strncpy (dataFile,argv[1], 255); // read from in.dat file
 
   InFile = fopen(dataFile,"r");  // Open files for data
   if(InFile == NULL)
   {
-    fprintf(stdout, "ERROR!\tCannot read file %s\n", argv[1]);
+    fprintf(stdout, "*** ERROR - \tCannot read file %s\n", argv[1]);
     return -1;
   }
+ 
+  //Fill Parameter array
+  parameters[0] = &activeWatts;
+  parameters[1] = &SleepWatts;
+  parameters[2] = &timeOut1;
+  parameters[3] = &time1;
+  parameters[4] = &timeOut2;
+  parameters[5] = &time2;
 
-  //splitFile with tokens to obtain ActiveWatts and SleepWatts from name of file
-  tokens = "\\_."; //tokens used to split argv[1]
-  tokenHolder = (char*) strtok(dataFile,tokens);
-  SleepWatts = atoi(tokenHolder);
-  while ((tokenHolder != NULL) && (strcmp(tokenHolder,"vec")))
-  {
-    ActiveWatts = SleepWatts;
-    SleepWatts = atoi(tokenHolder);
-    tokenHolder = (char*) strtok(NULL,tokens);
-  }
+  //Read first line of file for parameters and set accordingly
+  fgets(params, 128, InFile);
+  getParameters(params, parameters);
 
   //output files to hold savings data
   WattageFile = fopen("wattage.txt","a");
   if(WattageFile == NULL)
   {
-    fprintf(stdout, "ERROR!\tCannot read file %s\n","wattage.txt" );
+    fprintf(stdout, "*** ERROR - \tCannot read file %s\n","wattage.txt" );
     return -1;
   }
   UsageFile = fopen("usage.txt", "a");
   if(UsageFile == NULL)
   {
-    fprintf(stdout, "ERROR!\tCannot read file %s\n", "usage.txt");
+    fprintf(stdout, "*** ERROR - \tCannot read file %s\n", "usage.txt");
     return -1;
   }
 
@@ -224,6 +228,9 @@ int main(int argc, char *argv[])
   printf("-  time to switch #1            = %d minutes \n", time1);
   printf("-  time to switch #2            = %d minutes \n", time2);
   printf("---------------------------------------------------------------\n");
+  printf("-  Consumtion when on           = %d watts   \n", activeWatts);
+  printf("-  Consumtion when off          = %d watts   \n", SleepWatts);
+  printf("---------------------------------------------------------------\n");
   printf("-  Total time                   = %d minutes \n", N);
   printf("-  Resulting sleep time         = %d minutes \n", sleepTime);
   printf("-  Resulting number of wake-ups = %d events  \n", wakeUpCount);
@@ -231,12 +238,12 @@ int main(int argc, char *argv[])
   printf("%d %d %d   sleep   = %f %% of total time \n",
     N, sleepTime, wakeUpCount, (100.0 * sleepTime / N));
   printf("            savings = %f %% of total wattage draw \n",
-    (computeSavings(sleepTime, SleepWatts, ActiveWatts )));
+    (computeSavings(sleepTime, SleepWatts, activeWatts )));
 
   //Output to file
   fprintf(UsageFile,  "%f \n", (100.0 * sleepTime / N));
   fprintf(WattageFile,"%f \n", (computeSavings(sleepTime, SleepWatts,
-    ActiveWatts)));
+    activeWatts)));
 
   //close file pointers
   fclose(UsageFile);
@@ -349,4 +356,33 @@ double  computeSavings(int sleepTime, int sleepWatts, int activeWatts)
   S = eq1 - eq2;
 
   return 100.0 * (S / eq1);
+}
+
+
+//---------------------------------------------------------------------------
+//-  Sets data based on parameters obtained from first line of in.dat       -
+//---------------------------------------------------------------------------
+void getParameters(char* line, int **parameters)
+{
+  char     *tokens;                     //used for splitting strings
+  char     *tokenHolder;                //Pointer to last token found
+  int      i;                           //loop counter
+
+  tokens = ","; 
+  tokenHolder = strtok(line,tokens);
+
+  //Fill as many parameters as possible
+  for(i = 0; i < NUMPARAMETERS ; ++i)
+  {
+     if( tokenHolder == NULL )
+     {
+       //Warn user that defauls will be set
+       printf("*** WARNING - No parameters are set after %d\n", i);
+       break;
+     }
+
+     //Grab the next parameter
+     *parameters[i] = atoi(tokenHolder);
+     tokenHolder = strtok(NULL,tokens);
+  }
 }
