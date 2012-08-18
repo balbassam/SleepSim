@@ -150,6 +150,8 @@ int main(int argc, char *argv[])
   computeSleep(&sleepTime, &wakeUpCount);
 
   //-----------Output to .res file-------------------------------------------
+  //Name of computer
+  fprintf(procFile,"%s,",computerName);
   //Savings in KWh
   fprintf(procFile,"%.2f,",
     computeSavingsWatts(sleepTime, sleepWatts, activeWatts) ); 
