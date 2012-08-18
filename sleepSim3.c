@@ -92,6 +92,8 @@ void outputX(void);               // Output X vector
 void computeSleep(int *sleepTime, int *wakeUpCount); // Compute sleep time
 // Computes wattage Savings
 double  computeSavings(int sleepTime, int sleepWatts, int activeWatts); 
+
+//Sets parameters
 void getParameters(char* line, int **parameters);
 
 //===========================================================================
@@ -228,8 +230,8 @@ int main(int argc, char *argv[])
   printf("-  time to switch #1            = %d minutes \n", time1);
   printf("-  time to switch #2            = %d minutes \n", time2);
   printf("---------------------------------------------------------------\n");
-  printf("-  Consumtion when on           = %d watts   \n", activeWatts);
-  printf("-  Consumtion when off          = %d watts   \n", SleepWatts);
+  printf("-  Consumption when on           = %d watts   \n", activeWatts);
+  printf("-  Consumption when off          = %d watts   \n", SleepWatts);
   printf("---------------------------------------------------------------\n");
   printf("-  Total time                   = %d minutes \n", N);
   printf("-  Resulting sleep time         = %d minutes \n", sleepTime);
