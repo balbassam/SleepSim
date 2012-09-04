@@ -95,10 +95,10 @@ int main(int argc, char *argv[])
   // Initialize default values
   activeWatts = 100;    // 100 Watts active consumption
   sleepWatts = 0;       // 0 Watts idle consumption
-  timeOut1 = 45;        // 45 minutes midnight to 8am and 5pm to midnight
-  timeOut2 = 120;       // 2 hours 8am to 5pm
+  timeOut1 = 45;        // 45 minutes midnight to 8am and 6pm to midnight
+  timeOut2 = 480;       // 8 hours 8am to 6pm
   time1 = 480;          // 8 am
-  time2 = 1020;         // 5 pm
+  time2 = 1080;         // 6 pm
 
   // check for command line arguments
   if(argc != 2)
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
   procFile = fopen(outFileName,"w");
   if(procFile == NULL)
   {
-    fprintf(stdout, "*** ERROR - \tCannot write to file %s\n",outFileName );
+    fprintf(stdout, "*** ERROR - \tCannot write to file %s\n" ,outFileName );
     return -1;
   }
 
@@ -147,7 +147,8 @@ int main(int argc, char *argv[])
   for (i=0; i<N; i++)
   {
     // Set dailyTime to zero when cross midnight
-    if ((i % ONEDAY) == 0) dailyTime = 0;
+    if ((i % ONEDAY) == 0) 
+      dailyTime = 0;
 
     // Determine if start of next idle period
     if ((X[i] == 'I')  && (idleState == FALSE))
@@ -168,10 +169,24 @@ int main(int argc, char *argv[])
       else
        timeOutCurrent = timeOut2;
 
-      if ((dailyTime == time1) || (dailyTime == time2 + 1))
+      //Wake up at begginning of the day
+      if (dailyTime == time1)
+      {
         idleCount = 0;
+      }
+      
+      //set timeout for the next policy
+      if ( dailyTime == time2 + 1 )
+      {
+        // Stay asleep if already been asleep
+        if (X[i-1] == 'Z')
+          idleCount = timeOutCurrent;
+        else //If computer wasn't in a forced sleep keep it awake
+            idleCount = 0;
+      }
 
-      if (idleCount > timeOutCurrent)
+
+      if (idleCount >= timeOutCurrent)
         X[i] = 'Z';
       else
         idleCount++;

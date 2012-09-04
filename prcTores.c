@@ -98,12 +98,13 @@ int main(int argc, char *argv[])
   int      i;                          // Loop counter
 
   // Initialize default values
+
   activeWatts = 100;    // 100 Watts active consumption
   sleepWatts = 0;       // 0 Watts idle consumption
-  timeOut1 = 45;        // 45 minutes midnight to 8am and 5pm to midnight
-  timeOut2 = 120;       // 2 hours 8am to 5pm
+  timeOut1 = 45;        // 45 minutes midnight to 8am and 6pm to midnight
+  timeOut2 = 480;       // 8 hours 8am to 6pm
   time1 = 480;          // 8 am
-  time2 = 1020;         // 5 pm
+  time2 = 1080;         // 6 pm
 
   // check for command line arguments
   if(argc != 2)
