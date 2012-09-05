@@ -204,7 +204,7 @@ void computeSleep(int *sleepTime, int *wakeUpCount)
   int      i;                      // Loop counter
 
   //NOTE!!!
-  //Forced wakeups are {Z,S}->{I,A,U} 
+  //Forced wakeups are {Z,S,O}->{I,A,U} 
  // Loop to determine total sleep time and number of forced wake-ups
   *sleepTime = *wakeUpCount = 0;
   idleState = TRUE;
@@ -225,7 +225,7 @@ void computeSleep(int *sleepTime, int *wakeUpCount)
     }
 
     // Determine if in an idle period
-    if ((X[i] == 'S') || (X[i] == 'Z'))
+    if ((X[i] == 'S') || (X[i] == 'Z') || (X[i]=='O'))
       idleState = TRUE;
 
     // Tally the sleep

@@ -66,6 +66,8 @@ void loadX(void);
 void outputX(FILE *outPutFile);
 //Sets parameters
 void getParameters(char* line, float **parameters, char *outFileName);
+//Wakes up from poweroff
+void wakeUpDevice(int position, int timeOut);
 
 //===========================================================================
 //=  Main program                                                           =
@@ -169,11 +171,6 @@ int main(int argc, char *argv[])
       else
        timeOutCurrent = timeOut2;
 
-      //Wake up at begginning of the day
-      if (dailyTime == time1)
-      {
-        idleCount = 0;
-      }
       
       //set timeout for the next policy
       if ( dailyTime == time2 + 1 )
@@ -190,6 +187,14 @@ int main(int argc, char *argv[])
         X[i] = 'Z';
       else
         idleCount++;
+    }
+
+    //Wake up at beginning of the day
+    if (dailyTime == time1)
+    {
+      idleState  = FALSE;
+      idleCount  = 0;
+      wakeUpDevice(i,timeOut1);
     }
 
     // Increment dailyTime
@@ -293,3 +298,27 @@ void getParameters(char* line, float **parameters, char *outFileName)
      tokenHolder = strtok(NULL,tokens);
   }
 }
+
+//---------------------------------------------------------------------------
+//-  Force wakes up a pc from an off state.                                 -
+//---------------------------------------------------------------------------
+void wakeUpDevice(int position, int timeOut)
+{
+  int      i;                      // Loop counter
+
+  //loop to turn pc on if it was already off for the duration of timeOut - 1
+  for(i = 0; i < timeOut; ++i)
+  {
+    //Check if the PC is off, asleep, or unknown
+    if( X[position + i] == 'O' ||
+        X[position + i] == 'Z' ||
+        X[position + i] == 'S' ||
+        X[position + i] == 'U')
+    {
+      X[position + i] = 'I'; //When awoken, the PC is assumed idle
+    }
+    else
+      break;                      //If the PC was not off, stop overwriting states
+  }
+}
+
