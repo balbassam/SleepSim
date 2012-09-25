@@ -1,2 +1,5 @@
-*.exe
+*
 
+!README.md
+!vecToPrc.c
+!prcToVec.c
