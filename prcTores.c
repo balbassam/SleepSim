@@ -13,21 +13,16 @@
 //=               percent is the percentage of watts saved                  = 
 //=               dollars is the monetary savings                           = 
 //=               wakeups is the total number of forced wakeups             = 
-//=                                                                         = 
-//=    5) Input is of format AAAUUUSSSIIIZOOO...                            =
+//=    5) Input is of format AAAUUUSSSIIIZZZZMOOO...                        =
 //=       where an "A" signifies that the computer was active               =
 //=       "O" signifies that the computer was off                           =
 //=       "S" signifies that the computer was sleeping                      =
 //=       "I" signifies that the computer was idle                          =
 //=       "U" signifies states which are unknown                            =
+//=       "M" signifies wakeup by magic packet                              =
 //=       "Z" signifies states which are enforced sleep                     =
 //=    6) It assumed that the data starts at midnight (time = 0 minutes)    =
-//=    7) Must initialize timeOut1 and timeOut2 to desired values           =
-//=    8) Must initialize time1 and time2 to desired values where from time =
-//=       0 to time1 timeOut1 is used, from time1+1 to time2 timeout2 is    =
-//=       is used, and from timeout2+1 to 1440 timeout1 is used for each    =
-//=       day.                                                              =
-//=    9) Ignore warnings on build                                          =
+//=    7) Ignore warnings on build                                          =
 //=-------------------------------------------------------------------------=
 //=  Build: bcc32 prcToRes.c                                                =
 //=-------------------------------------------------------------------------=
@@ -39,6 +34,7 @@
 //=          Email: bader@mail.usf.edu                                      =
 //=-------------------------------------------------------------------------=
 //=  History: BTB (08/17/12) - Genesis (from sleepSim3.c)                   =
+//=         : BTB (09/24/12) - Cosmetic clean up                            =
 //===========================================================================
 //----- Include files -------------------------------------------------------
 #include <stdio.h>                 // Needed for printf() and feof()
@@ -51,7 +47,7 @@
 #define   ONEDAY    1440           // Number of minutes in one day
 #define MAX_SIZE 1000000           // Maximum size of input data in minutes
 #define NUMPARAMETERS  2           // Numer of parameters used
-#define PRICEPERKWH 0.09           // Dollar Price of each KWh consumed
+#define PRICEPERKWH 0.08           // Dollar Price of each KWh consumed
 
 //----- Globals -------------------------------------------------------------
 char X[MAX_SIZE];                  // Time series read from "in.prc"
@@ -78,10 +74,6 @@ void getParameters(char* line, float **parameters, char *outFileName);
 int main(int argc, char *argv[])
 {
   float    *parameters[NUMPARAMETERS]; // Array of parameters
-  int      timeOut1, timeOut2;         // Inactivity timeout values
-  int      timeOutCurrent;             // Current timeout value
-  int      time1, time2;               // Inactivity timeout change times
-  int      dailyTime;                  // Time from last midnight
   int      idleState;                  // Flag for idle state
   int      idleCount;                  // Counter for idle state
   int      wakeUpCount;                // Counter for wake-up events
@@ -101,10 +93,6 @@ int main(int argc, char *argv[])
 
   activeWatts = 100;    // 100 Watts active consumption
   sleepWatts = 0;       // 0 Watts idle consumption
-  timeOut1 = 45;        // 45 minutes midnight to 8am and 6pm to midnight
-  timeOut2 = 480;       // 8 hours 8am to 6pm
-  time1 = 480;          // 8 am
-  time2 = 1080;         // 6 pm
 
   // check for command line arguments
   if(argc != 2)
@@ -225,7 +213,9 @@ void computeSleep(int *sleepTime, int *wakeUpCount)
     }
 
     // Determine if in an idle period
-    if ((X[i] == 'S') || (X[i] == 'Z') || (X[i]=='O'))
+    if ((X[i] == 'S') ||
+        (X[i] == 'Z') ||
+        (X[i] == 'O'))
       idleState = TRUE;
 
     // Tally the sleep
@@ -266,6 +256,7 @@ double  computeSavingsWatts(int sleepTime, int sleepWatts, int activeWatts)
   //Calculate total savings
   //eq1 is prior to policy consumption
   eq1 = ( N - AoffTime - AsleepTime ) * activeWatts + AsleepTime * sleepWatts;
+
   //eq1 is post policy consumption
   eq2 = ( N - AoffTime - AsleepTime  - sleepTime) * activeWatts +
 	  (AsleepTime + sleepTime) * sleepWatts;

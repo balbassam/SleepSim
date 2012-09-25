@@ -27,7 +27,9 @@
 //=       0 to time1 timeOut1 is used, from time1+1 to time2 timeout2 is    =
 //=       is used, and from timeout2+1 to 1440 timeout1 is used for each    =
 //=       day.                                                              =
-//=    9) Ignore warnings on build                                          =
+//=    9) Must initialize wakeUpTime to time that the computer should be    =
+//=       woken up by magic packet. Set to -1 to prevent wake up            =
+//=   10) Ignore warnings on build                                          =
 //=-------------------------------------------------------------------------=
 //=  Build: bcc32 sleepSim3.c                                               =
 //=-------------------------------------------------------------------------=
@@ -39,6 +41,7 @@
 //=          Email: bader@mail.usf.edu                                      =
 //=-------------------------------------------------------------------------=
 //=  History: BTB (08/17/12) - Genesis (from sleepSim3.c)                   =
+//=         : BTB (09/24/12) - Added wake up from sleep capability          =
 //===========================================================================
 //----- Include files -------------------------------------------------------
 #include <stdio.h>                 // Needed for printf() and feof()
@@ -64,9 +67,9 @@ int  AsleepTime;                   // Total mintues computers already sleep
 void loadX(void);
 // Output X vector
 void outputX(FILE *outPutFile);
-//Sets parameters
+// Sets parameters
 void getParameters(char* line, float **parameters, char *outFileName);
-//Wakes up from poweroff
+// Wakes up from poweroff by use of Magic Packet
 void wakeUpDevice(int position, int timeOut);
 
 //===========================================================================
@@ -83,6 +86,7 @@ int main(int argc, char *argv[])
   int      idleCount;                  // Counter for idle state
   int      wakeUpCount;                // Counter for wake-up events
   int      sleepTime;                  // Total sleep time
+  int      wakeUpTime;                 // Time to wake a computer up
   float    activeWatts;                // Consumption while on 
   float    sleepWatts;                 // Consumption while sleep 
 
@@ -101,6 +105,7 @@ int main(int argc, char *argv[])
   timeOut2 = 480;       // 8 hours 8am to 6pm
   time1 = 480;          // 8 am
   time2 = 1080;         // 6 pm
+  wakeUpTime = 480;     // 8 am
 
   // check for command line arguments
   if(argc != 2)
@@ -190,11 +195,11 @@ int main(int argc, char *argv[])
     }
 
     //Wake up at beginning of the day
-    if (dailyTime == time1)
+    if (dailyTime == wakeUpTime)
     {
       idleState  = FALSE;
       idleCount  = 0;
-      wakeUpDevice(i,timeOut1);
+      wakeUpDevice(i,timeOutCurrent);
     }
 
     // Increment dailyTime
@@ -318,7 +323,7 @@ void wakeUpDevice(int position, int timeOut)
       X[position + i] = 'I'; //When awoken, the PC is assumed idle
     }
     else
-      break;                      //If the PC was not off, stop overwriting states
+      break;                 //If the PC was not off, stop overwriting states
   }
 }
 
