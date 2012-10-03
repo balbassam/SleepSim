@@ -42,6 +42,7 @@
 //=-------------------------------------------------------------------------=
 //=  History: BTB (08/17/12) - Genesis (from sleepSim3.c)                   =
 //=         : BTB (09/24/12) - Added wake up from sleep capability          =
+//=         : BTB (10/02/12) - Added many power policy capability           =
 //===========================================================================
 //----- Include files -------------------------------------------------------
 #include <stdio.h>                 // Needed for printf() and feof()
@@ -54,6 +55,17 @@
 #define   ONEDAY    1440           // Number of minutes in one day
 #define MAX_SIZE 1000000           // Maximum size of input data in minutes
 #define NUMPARAMETERS  2           // Numer of parameters used
+
+typedef struct PowerPolicy {
+    int timeOut1;                  // First timeout value
+    int timeOut2;                  // Second timeout value
+    
+    int time1;                     // Timeout change time
+    int time2;                     // Second timeout change time
+
+    int wakeUpTime;                // When the PC should wake if.
+
+} Policy;
 
 //----- Globals -------------------------------------------------------------
 char X[MAX_SIZE];                  // Time series read from "in.vec"
@@ -78,15 +90,18 @@ void wakeUpDevice(int position, int timeOut);
 int main(int argc, char *argv[])
 {
   float    *parameters[NUMPARAMETERS]; // Array of parameters
-  int      timeOut1, timeOut2;         // Inactivity timeout values
+
+  Policy   weekDayPolicy;              // Power policy for weekdays
+  Policy   weekEndPolicy;              // Power policy for weekends
+  Policy*  activePolicy;               // Active policy for main loop
+
   int      timeOutCurrent;             // Current timeout value
-  int      time1, time2;               // Inactivity timeout change times
   int      dailyTime;                  // Time from last midnight
+  int      dayCounter;                 // Days simulation has run for
   int      idleState;                  // Flag for idle state
   int      idleCount;                  // Counter for idle state
   int      wakeUpCount;                // Counter for wake-up events
   int      sleepTime;                  // Total sleep time
-  int      wakeUpTime;                 // Time to wake a computer up
   float    activeWatts;                // Consumption while on 
   float    sleepWatts;                 // Consumption while sleep 
 
@@ -101,11 +116,21 @@ int main(int argc, char *argv[])
   // Initialize default values
   activeWatts = 100;    // 100 Watts active consumption
   sleepWatts = 0;       // 0 Watts idle consumption
-  timeOut1 = 45;        // 45 minutes midnight to 8am and 6pm to midnight
-  timeOut2 = 480;       // 8 hours 8am to 6pm
-  time1 = 480;          // 8 am
-  time2 = 1080;         // 6 pm
-  wakeUpTime = 480;     // 8 am
+
+  // Setup policy for weekdays
+  weekDayPolicy.timeOut1    = 45;      // 45 minutes midnight to 8am and 6pm to midnight
+  weekDayPolicy.timeOut2    = 480;     // 8 hours 8am to 6pm
+  weekDayPolicy.time1       = 480;     // 8 am
+  weekDayPolicy.time2       = 1080;    // 6 pm
+  weekDayPolicy.wakeUpTime  = 480;     // 8 am
+
+  // Setup policy for weekends
+  weekEndPolicy.timeOut1    = 45;      // 45 minutes midnight to 8am and 6pm to midnight
+  weekEndPolicy.timeOut2    = 45;      // 45 minutes 8am to 6pm
+  weekEndPolicy.time1       = 480;     // 8 am
+  weekEndPolicy.time2       = 480;     // 6 pm, same as time1 so doesn't matter
+  weekEndPolicy.wakeUpTime  = -1;      // don't wake up
+
 
   // check for command line arguments
   if(argc != 2)
@@ -148,6 +173,12 @@ int main(int argc, char *argv[])
   // Load X and determine N
   loadX();
 
+  // Start at a weekday
+  activePolicy = &weekDayPolicy;
+
+  // Will be incremented to 0 in beginning of simulation loop
+  dayCounter = -1;
+
   // ****************** Main simulation loop ****************
   idleState = FALSE;
   idleCount = 0;
@@ -155,14 +186,31 @@ int main(int argc, char *argv[])
   {
     // Set dailyTime to zero when cross midnight
     if ((i % ONEDAY) == 0) 
+    {
       dailyTime = 0;
+      dayCounter ++;
+      dayCounter = dayCounter %7;
+      printf("%d\n",dayCounter);
+    }
+
+    // Set plan for day of week
+    if (dayCounter == 1 || dayCounter == 2)
+    {
+      // Saturday and Sunday are weekends
+      activePolicy = &weekEndPolicy;
+    }
+    else
+    {
+      // Every other day of the week
+      activePolicy = &weekDayPolicy;
+    }
 
     // Determine if start of next idle period
     if ((X[i] == 'I')  && (idleState == FALSE))
       idleState = TRUE;
 
     // Determine if start of next busy period
-    if ((X[i] == 'A') || (X[i]  == 'U'))
+    if ((X[i] == 'A') || (X[i]  == 'U') || (X[i] == 'O') || (X[i] == 'S'))
     {
       idleState = FALSE;
       idleCount = 0;
@@ -171,14 +219,14 @@ int main(int argc, char *argv[])
     // Execute the timeout while in an idle period
     if (idleState == TRUE)
     {
-      if ((dailyTime <= time1) || (dailyTime > time2))
-       timeOutCurrent = timeOut1;
+      if ((dailyTime <= activePolicy->time1) || (dailyTime > activePolicy->time2))
+       timeOutCurrent = activePolicy->timeOut1;
       else
-       timeOutCurrent = timeOut2;
+       timeOutCurrent = activePolicy->timeOut2;
 
       
       //set timeout for the next policy
-      if ( dailyTime == time2 + 1 )
+      if ((dailyTime == activePolicy->time2 + 1) || (dailyTime == activePolicy->time1 + 1))
       {
         // Stay asleep if already been asleep
         if (X[i-1] == 'Z')
@@ -188,6 +236,7 @@ int main(int argc, char *argv[])
       }
 
 
+      // Put computer to sleep if timout has been triggered
       if (idleCount >= timeOutCurrent)
         X[i] = 'Z';
       else
@@ -195,7 +244,7 @@ int main(int argc, char *argv[])
     }
 
     //Wake up at beginning of the day
-    if (dailyTime == wakeUpTime)
+    if (dailyTime == activePolicy->wakeUpTime)
     {
       idleState  = FALSE;
       idleCount  = 0;
@@ -314,16 +363,15 @@ void wakeUpDevice(int position, int timeOut)
   //loop to turn pc on if it was already off for the duration of timeOut - 1
   for(i = 0; i < timeOut; ++i)
   {
-    //Check if the PC is off, asleep, or unknown
-    if( X[position + i] == 'O' ||
-        X[position + i] == 'Z' ||
+    //Check if the PC is asleep
+    if( X[position + i] == 'Z' ||
         X[position + i] == 'S' ||
-        X[position + i] == 'U')
+        )
     {
       X[position + i] = 'I'; //When awoken, the PC is assumed idle
     }
     else
-      break;                 //If the PC was not off, stop overwriting states
+      break;                 //If was not in sleep, then stop overwriting 
   }
 }
 
