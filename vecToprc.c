@@ -22,14 +22,15 @@
 //=       "U" signifies states which are unknown                            =
 //=       "Z" signifies states which are enforced sleep                     =
 //=    6) It assumed that the data starts at midnight (time = 0 minutes)    =
-//=    7) Must initialize timeOut1 and timeOut2 to desired values           =
-//=    8) Must initialize time1 and time2 to desired values where from time =
+//=    7) Must initialize each PowerPolicy                                  =
+//=    8) Must initialize timeOut1 and timeOut2 to desired values           =
+//=    9) Must initialize time1 and time2 to desired values where from time =
 //=       0 to time1 timeOut1 is used, from time1+1 to time2 timeout2 is    =
 //=       is used, and from timeout2+1 to 1440 timeout1 is used for each    =
 //=       day.                                                              =
-//=    9) Must initialize wakeUpTime to time that the computer should be    =
+//=   10) Must initialize wakeUpTime to time that the computer should be    =
 //=       woken up by magic packet. Set to -1 to prevent wake up            =
-//=   10) Ignore warnings on build                                          =
+//=   11) Ignore warnings on build                                          =
 //=-------------------------------------------------------------------------=
 //=  Build: bcc32 sleepSim3.c                                               =
 //=-------------------------------------------------------------------------=
