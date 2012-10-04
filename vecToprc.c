@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
       dailyTime = 0;
       dayCounter ++;
       dayCounter = dayCounter %7;
-      printf("%d\n",dayCounter);
+      printf("%d, ",dayCounter);
     }
 
     // Set plan for day of week
@@ -365,9 +365,7 @@ void wakeUpDevice(int position, int timeOut)
   for(i = 0; i < timeOut; ++i)
   {
     //Check if the PC is asleep
-    if( X[position + i] == 'Z' ||
-        X[position + i] == 'S' ||
-        )
+    if( X[position + i] == 'Z' || X[position + i] == 'S' )
     {
       X[position + i] = 'I'; //When awoken, the PC is assumed idle
     }
